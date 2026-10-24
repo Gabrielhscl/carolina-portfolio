@@ -12,7 +12,8 @@ export const metadata = {
 export const instant = false;
 
 export default async function SobrePage() {
-  const { data: perfil } = await supabase.from("perfil").select("*").single();
+  const { data } = await supabase.from("perfil").select("*").single();
+  const perfil = data as Perfil | null;
   
   const fotoUrl = perfil?.foto_url || '/carolina.jpg';
   const titulo = perfil?.sobre_titulo || 'Minha História';
@@ -22,11 +23,12 @@ export default async function SobrePage() {
   const t3 = perfil?.sobre_texto_3 || '';
   const t4 = perfil?.sobre_texto_4 || '';
   
-  // Lista de formação dinâmica
-  const formacao = perfil?.formacao || [
+  // AQUI ESTÁ A CORREÇÃO: Tipando explicitamente como string[]
+  const formacao: string[] = perfil?.formacao || [
     "Graduanda em Recursos Humanos",
     "Consultora em Audiodescrição",
-    "Maquiadora e Formadora"
+    "Maquiadora e Formadora",
+    "Massoterapeuta (Ventosaterapia e Liberação Miofascial)"
   ];
 
   return (
@@ -69,13 +71,13 @@ export default async function SobrePage() {
             </div>
           </div>
 
-          {/* FORMAÇÃO E ESPECIALIDADES DINÂMICA */}
+          {/* FORMAÇÃO E ESPECIALIDADES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8">
             <div className="bg-zinc-900 text-white p-8 rounded-3xl">
               <Sparkles className="text-purple-400 mb-4" size={32} aria-hidden="true" />
               <h2 className="text-2xl font-black uppercase tracking-tight mb-4">Formação & Especialidades</h2>
               <ul className="space-y-3 text-zinc-300">
-                {formacao.map((item, i) => (
+                {formacao.map((item: string, i: number) => (
                   <li key={i} className="flex gap-2">
                     <span className="text-purple-400 font-bold">•</span> 
                     <span>{item}</span>
