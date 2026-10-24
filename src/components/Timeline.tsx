@@ -1,90 +1,119 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { Experiencia } from "@/types";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Award, Briefcase } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { ModalTrabalho } from "./ModalTrabalho";
 
 interface TimelineProps {
   experiencias: Experiencia[];
+  limit?: number;
+  totalCount?: number;
 }
 
-export function Timeline({ experiencias }: TimelineProps) {
-  // Função simples para formatar a data (ex: "Janeiro de 2025")
+export function Timeline({ experiencias, limit, totalCount }: TimelineProps) {
+  const [modalAberto, setModalAberto] = useState<Experiencia | null>(null);
+
+  const exibidas = limit ? experiencias.slice(0, limit) : experiencias;
+  const temMais = limit && totalCount && totalCount > exibidas.length;
+
   const formatarData = (data: string) => {
-    return format(parseISO(data), "MMMM 'de' yyyy", { locale: ptBR });
+    return format(parseISO(data), "MMM yyyy", { locale: ptBR }).replace(".", "").toUpperCase();
   };
 
-  if (experiencias.length === 0) {
+  if (exibidas.length === 0) {
     return (
-      <p className="text-center text-lg text-gray-600 mt-8">
-        Nenhuma experiência cadastrada ainda. Acesse a área administrativa para adicionar.
+      <p className="text-center text-lg text-zinc-500 py-12">
+        Nenhuma experiência cadastrada ainda.
       </p>
     );
   }
 
   return (
-    // A tag <section> ajuda o VoiceOver a identificar uma seção de conteúdo
-    <section aria-label="Linha do tempo de experiências profissionais" className="max-w-4xl mx-auto mt-12 space-y-8">
-      {experiencias.map((exp, index) => (
-        // Cada experiência é um <article>. Isso diz ao leitor de tela: 
-        // "Aqui começa um conteúdo independente".
-        <article 
-          key={exp.id} 
-          className="relative pl-8 md:pl-0"
-        >
-          {/* Linha vertical decorativa (oculta para leitores de tela) */}
-          <div className="hidden md:block absolute left-8 top-0 bottom-0 w-0.5 bg-purple-200" aria-hidden="true"></div>
+    <>
+      <section aria-label="Linha do tempo de experiências" className="w-full space-y-4">
+        {exibidas.map((exp, index) => {
+          // Procura o primeiro anexo que seja uma imagem (ignora PDFs)
+          const primeiraImagem = exp.anexos?.find((anexo) =>
+            !anexo.url.toLowerCase().endsWith(".pdf")
+          );
 
-          <div className="md:flex md:items-start md:gap-8">
-            {/* Data */}
-            <div className="md:w-48 md:text-right md:pt-2 flex items-center md:justify-end gap-2 text-purple-700 font-semibold mb-2 md:mb-0">
-              <Calendar size={18} aria-hidden="true" />
-              {/* A tag <time> é excelente para acessibilidade de datas */}
-              <time dateTime={exp.data_inicio}>
-                {formatarData(exp.data_inicio)}
-              </time>
-            </div>
+          return (
+            <motion.button
+              key={exp.id}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              onClick={() => setModalAberto(exp)}
+              className="w-full group relative overflow-hidden rounded-xl bg-zinc-900 text-left transition-all duration-500 hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-purple-500"
+              aria-label={`Ver detalhes do trabalho: ${exp.titulo}`}
+            >
+              {/* Imagem de fundo (se houver) */}
+              {primeiraImagem ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primeiraImagem.url}
+                    alt={primeiraImagem.alt}
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" aria-hidden="true" />
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 to-zinc-800" aria-hidden="true" />
+              )}
 
-            {/* Conteúdo do Card */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-100 flex-1 hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-purple-500">
-              <div className="flex items-center gap-2 mb-2">
-                {/* Ícone baseado na categoria (opcional) */}
-                <Award className="text-purple-600" size={20} aria-hidden="true" />
-                <span className="text-sm font-bold text-purple-800 uppercase tracking-wide">
-                  {exp.categoria}
-                </span>
+              {/* Conteúdo do Banner */}
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between p-6 md:p-8 gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                      {formatarData(exp.data_inicio)}
+                    </span>
+                    <span className="text-xs font-bold text-purple-300 uppercase tracking-widest border border-purple-300/30 px-2 py-0.5 rounded">
+                      {exp.categoria}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight leading-tight">
+                    {exp.titulo}
+                  </h3>
+                  <p className="text-white/80 font-medium text-sm md:text-base mt-2">
+                    {exp.instituicao}
+                  </p>
+                </div>
+
+                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md p-4 rounded-full border border-white/20 group-hover:bg-purple-600 group-hover:border-purple-500 transition-colors">
+                  <ArrowUpRight size={28} className="text-white" aria-hidden="true" />
+                </div>
               </div>
-              
-              <h3 className="text-xl font-bold text-slate-900 mb-1">
-                {exp.titulo}
-              </h3>
-              
-              <p className="text-gray-600 font-medium mb-3 flex items-center gap-2">
-                <Briefcase size={16} aria-hidden="true" />
-                {exp.instituicao}
-              </p>
+            </motion.button>
+          );
+        })}
 
-              {exp.descricao && (
-                <p className="text-gray-700 leading-relaxed text-lg">
-                  {exp.descricao}
-                </p>
-              )}
-              
-              {/* Botão para ver o certificado (se existir) */}
-              {exp.certificado_url && (
-                <a 
-                  href={exp.certificado_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-block mt-4 text-purple-700 font-bold hover:underline focus:outline-none focus:ring-2 focus:ring-purple-500 rounded p-1"
-                  aria-label={`Abrir comprovação do trabalho ${exp.titulo} em nova aba`}
-                >
-                  Ver Comprovação →
-                </a>
-              )}
-            </div>
+        {temMais && (
+          <div className="pt-8 text-center">
+            <Link
+              href="/experiencias"
+              className="inline-flex items-center gap-2 border-b-2 border-zinc-950 text-zinc-950 font-bold text-xl uppercase tracking-widest pb-2 hover:text-purple-700 hover:border-purple-700 transition-colors focus:outline-none"
+            >
+              Ver Histórico Completo ({totalCount})
+              <ArrowRight size={24} aria-hidden="true" />
+            </Link>
           </div>
-        </article>
-      ))}
-    </section>
+        )}
+      </section>
+
+      {modalAberto && (
+        <ModalTrabalho
+          experiencia={modalAberto}
+          onClose={() => setModalAberto(null)}
+        />
+      )}
+    </>
   );
 }
